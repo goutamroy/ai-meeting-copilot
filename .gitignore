@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# DB
+*.db
+*.sqlite3
+
+# Cache
+.pytest_cache/
+.mypy_cache/
+
+# Alembic cache
+alembic/__pycache__/
+
+# Temp files
+tmp/
+temp/
+uploads/
+
+# Test audio / local sample files
+*.wav
+*.m4a
+*.mp3
+
+# Local test scripts
+test_*.py
+
+# Build
+dist/
+build/
+
+# Secrets
+*.pem
+*.key
+secrets.json
