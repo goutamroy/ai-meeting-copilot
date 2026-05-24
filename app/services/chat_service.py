@@ -9,9 +9,12 @@ from app.db.models import (
     ChatHistory
 )
 
+from app.services.pinecone_service import (
+    search_embedding
+)
+
 from app.utils.logger import logger
 from app.utils.exceptions import (
-    NotFoundException,
     ValidationException,
     ProcessingException
 )
@@ -35,11 +38,12 @@ def ask_question(
             "Question cannot be empty"
         )
 
-    meeting = None
+    context = None
+    db_available = True
 
-    # -------------------------
-    # DB lookup (best effort)
-    # -------------------------
+    # --------------------------------
+    # Try PostgreSQL first
+    # --------------------------------
     try:
         meeting = (
             db.query(Meeting)
@@ -48,24 +52,9 @@ def ask_question(
             )
             .first()
         )
-    except SQLAlchemyError as e:
-        db.rollback()
 
-        logger.warning(
-            "Database unavailable "
-            f"while fetching meeting: {str(e)}"
-        )
-
-    # -------------------------
-    # Fallback if DB missing
-    # -------------------------
-    if not meeting:
-        raise NotFoundException(
-            "Meeting not found "
-            "or database unavailable"
-        )
-
-    context = f"""
+        if meeting:
+            context = f"""
 Transcript:
 {meeting.transcript or ""}
 
@@ -79,6 +68,85 @@ Key Decisions:
 {meeting.key_decisions or ""}
 """
 
+            logger.info(
+                "Meeting context "
+                "loaded from DB"
+            )
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        db_available = False
+
+        logger.warning(
+            "Database unavailable. "
+            f"Trying Pinecone fallback: {str(e)}"
+        )
+
+    # --------------------------------
+    # Pinecone fallback
+    # --------------------------------
+    if not context:
+        try:
+            logger.info(
+                "Generating question "
+                "embedding"
+            )
+
+            embedding_response = (
+                client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=question
+                )
+            )
+
+            query_embedding = (
+                embedding_response
+                .data[0]
+                .embedding
+            )
+
+            matches = search_embedding(
+                query_embedding
+            )
+
+            if matches:
+                transcript = (
+                    matches[0]
+                    .metadata
+                    .get(
+                        "transcript",
+                        ""
+                    )
+                )
+
+                context = f"""
+Transcript:
+{transcript}
+"""
+
+                logger.info(
+                    "Meeting context "
+                    "loaded from Pinecone"
+                )
+
+        except Exception as e:
+            logger.warning(
+                "Pinecone fallback "
+                f"failed: {str(e)}"
+            )
+
+    # --------------------------------
+    # Final guard
+    # --------------------------------
+    if not context:
+        raise ProcessingException(
+            "Unable to retrieve "
+            "meeting context"
+        )
+
+    # --------------------------------
+    # Ask OpenAI
+    # --------------------------------
     for attempt in range(
         1,
         MAX_RETRIES + 1
@@ -97,13 +165,16 @@ Key Decisions:
                             "role": "system",
                             "content":
                                 "Answer only from "
-                                "provided meeting context."
+                                "the provided "
+                                "meeting context."
                         },
                         {
                             "role": "user",
                             "content":
-                                f"Context:\n{context}\n\n"
-                                f"Question: {question}"
+                                f"Context:\n"
+                                f"{context}\n\n"
+                                f"Question: "
+                                f"{question}"
                         }
                     ],
                     timeout=60
@@ -121,38 +192,42 @@ Key Decisions:
                 "No response generated."
             )
 
-            # -------------------------
-            # DB save (best effort)
-            # -------------------------
-            try:
-                chat = ChatHistory(
-                    meeting_id=meeting_id,
-                    question=question,
-                    answer=answer
-                )
+            # --------------------------------
+            # Best-effort DB save
+            # --------------------------------
+            if db_available:
+                try:
+                    chat = ChatHistory(
+                        meeting_id=meeting_id,
+                        question=question,
+                        answer=answer
+                    )
 
-                db.add(chat)
-                db.commit()
-                db.refresh(chat)
+                    db.add(chat)
+                    db.commit()
+                    db.refresh(chat)
 
-                logger.info(
-                    f"Chat saved "
-                    f"id={chat.id}"
-                )
+                    logger.info(
+                        f"Chat saved "
+                        f"id={chat.id}"
+                    )
 
-            except SQLAlchemyError as e:
-                db.rollback()
+                except SQLAlchemyError as e:
+                    db.rollback()
 
-                logger.warning(
-                    "Database unavailable. "
-                    "Skipping chat history save: "
-                    f"{str(e)}"
-                )
+                    logger.warning(
+                        "Skipping DB "
+                        "chat save: "
+                        f"{str(e)}"
+                    )
 
             return answer
 
         except Exception as e:
-            db.rollback()
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
             logger.warning(
                 f"Chat retry "
