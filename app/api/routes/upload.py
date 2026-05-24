@@ -6,6 +6,7 @@ from fastapi import (
 )
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import get_db
 from app.db.models import Meeting
@@ -42,47 +43,62 @@ async def upload_audio(
         )
 
         # Validate
-        await validate_audio_file(
-            file
-        )
+        await validate_audio_file(file)
 
-        # Process AI pipeline
-        result = await process_meeting(
-            file
-        )
+        # AI pipeline
+        result = await process_meeting(file)
 
-        meeting = Meeting(
-            audio_file_url=result.get(
-                "blob_url"
-            ),
-            transcript=result.get(
-                "transcript"
-            ),
-            summary=result.get(
-                "summary"
-            ),
-            action_items=result.get(
-                "action_items"
-            ),
-            key_decisions=result.get(
-                "key_decisions"
+        db_saved = False
+        meeting_id = result.get("meeting_id")
+
+        # -----------------------------
+        # Graceful DB fallback
+        # -----------------------------
+        try:
+            meeting = Meeting(
+                audio_file_url=result.get(
+                    "blob_url"
+                ),
+                transcript=result.get(
+                    "transcript"
+                ),
+                summary=result.get(
+                    "summary"
+                ),
+                action_items=result.get(
+                    "action_items"
+                ),
+                key_decisions=result.get(
+                    "key_decisions"
+                )
             )
-        )
 
-        db.add(meeting)
-        db.commit()
-        db.refresh(meeting)
+            db.add(meeting)
+            db.commit()
+            db.refresh(meeting)
 
-        logger.info(
-            f"Meeting saved "
-            f"successfully: "
-            f"id={meeting.id}"
-        )
+            db_saved = True
+            meeting_id = meeting.id
+
+            logger.info(
+                f"Meeting saved "
+                f"successfully: "
+                f"id={meeting.id}"
+            )
+
+        except SQLAlchemyError as db_error:
+            db.rollback()
+
+            logger.warning(
+                "Database unavailable. "
+                "Continuing without DB "
+                f"persistence: {str(db_error)}"
+            )
 
         return {
             "success": True,
-            "meeting_id":
-                meeting.id,
+            "meeting_id": meeting_id,
+            "db_persisted": db_saved,
             "message":
                 "Meeting uploaded "
                 "successfully",
@@ -105,7 +121,10 @@ async def upload_audio(
         }
 
     except Exception as e:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
         logger.error(
             f"Upload failed: "
