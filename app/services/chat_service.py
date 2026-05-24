@@ -1,5 +1,6 @@
 import time
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from openai import OpenAI
 
 from app.config.settings import settings
@@ -25,27 +26,43 @@ BACKOFF_SECONDS = 2
 
 def ask_question(
     question: str,
-    meeting_id: int,
+    meeting_id,
     db: Session
 ) -> str:
+
     if not question.strip():
         raise ValidationException(
-            "Question "
-            "cannot be empty"
+            "Question cannot be empty"
         )
 
-    meeting = (
-        db.query(Meeting)
-        .filter(
-            Meeting.id
-            == meeting_id
-        )
-        .first()
-    )
+    meeting = None
 
+    # -------------------------
+    # DB lookup (best effort)
+    # -------------------------
+    try:
+        meeting = (
+            db.query(Meeting)
+            .filter(
+                Meeting.id == meeting_id
+            )
+            .first()
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+
+        logger.warning(
+            "Database unavailable "
+            f"while fetching meeting: {str(e)}"
+        )
+
+    # -------------------------
+    # Fallback if DB missing
+    # -------------------------
     if not meeting:
         raise NotFoundException(
-            "Meeting not found"
+            "Meeting not found "
+            "or database unavailable"
         )
 
     context = f"""
@@ -79,18 +96,14 @@ Key Decisions:
                         {
                             "role": "system",
                             "content":
-                                "Answer only "
-                                "from the "
-                                "provided "
-                                "meeting context."
+                                "Answer only from "
+                                "provided meeting context."
                         },
                         {
                             "role": "user",
                             "content":
-                                f"Context:\n"
-                                f"{context}\n\n"
-                                f"Question: "
-                                f"{question}"
+                                f"Context:\n{context}\n\n"
+                                f"Question: {question}"
                         }
                     ],
                     timeout=60
@@ -108,23 +121,33 @@ Key Decisions:
                 "No response generated."
             )
 
-            chat = ChatHistory(
-                meeting_id=
-                    meeting_id,
-                question=
-                    question,
-                answer=
-                    answer
-            )
+            # -------------------------
+            # DB save (best effort)
+            # -------------------------
+            try:
+                chat = ChatHistory(
+                    meeting_id=meeting_id,
+                    question=question,
+                    answer=answer
+                )
 
-            db.add(chat)
-            db.commit()
-            db.refresh(chat)
+                db.add(chat)
+                db.commit()
+                db.refresh(chat)
 
-            logger.info(
-                f"Chat saved "
-                f"id={chat.id}"
-            )
+                logger.info(
+                    f"Chat saved "
+                    f"id={chat.id}"
+                )
+
+            except SQLAlchemyError as e:
+                db.rollback()
+
+                logger.warning(
+                    "Database unavailable. "
+                    "Skipping chat history save: "
+                    f"{str(e)}"
+                )
 
             return answer
 

@@ -4,6 +4,7 @@ from fastapi import (
 )
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import (
     get_db
@@ -41,10 +42,8 @@ def chat_with_meeting(
     db: Session = Depends(get_db)
 ):
     answer = ask_question(
-        question=
-            request.question,
-        meeting_id=
-            request.meeting_id,
+        question=request.question,
+        meeting_id=request.meeting_id,
         db=db
     )
 
@@ -71,9 +70,7 @@ def get_chat_history(
 ):
     try:
         chats = (
-            db.query(
-                ChatHistory
-            )
+            db.query(ChatHistory)
             .filter(
                 ChatHistory
                 .meeting_id
@@ -91,7 +88,24 @@ def get_chat_history(
             "count":
                 len(chats),
             "data":
-                chats
+                chats,
+            "db_persisted": True
+        }
+
+    except SQLAlchemyError as e:
+        db.rollback()
+
+        logger.warning(
+            "Database unavailable. "
+            "Returning empty chat history: "
+            f"{str(e)}"
+        )
+
+        return {
+            "success": True,
+            "count": 0,
+            "data": [],
+            "db_persisted": False
         }
 
     except Exception as e:
