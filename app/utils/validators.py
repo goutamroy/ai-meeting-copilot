@@ -1,59 +1,66 @@
 from fastapi import UploadFile
+
 from app.config.settings import settings
 from app.utils.exceptions import ValidationException
 
 
+# -----------------------------------
+# AUDIO FILE VALIDATION
+# -----------------------------------
 async def validate_audio_file(
     file: UploadFile
 ):
-    # -------------------------
-    # File name
-    # -------------------------
-    if not file.filename:
+    if not file:
         raise ValidationException(
-            "Missing file name"
+            "No file uploaded"
         )
 
-    # -------------------------
-    # Extension validation
-    # -------------------------
-    extension = (
-        "." + file.filename.split(".")[-1].lower()
-    )
-
-    if (
-        extension
-        not in settings.ALLOWED_EXTENSIONS
-    ):
-        raise ValidationException(
-            "Invalid file type. Allowed: "
-            ".m4a, .wav, .mp3"
-        )
-
-    # -------------------------
-    # MIME type validation
-    # -------------------------
+    # Validate MIME type
     if (
         file.content_type
         not in settings.ALLOWED_MIME_TYPES
     ):
         raise ValidationException(
-            "Unsupported MIME type. "
-            "Allowed: audio/m4a, "
-            "audio/wav, audio/mp3"
+            f"Unsupported file type: "
+            f"{file.content_type}"
         )
 
-    # -------------------------
-    # Size validation
-    # -------------------------
-    contents = await file.read()
+    # Validate extension
+    filename = (
+        file.filename or ""
+    ).lower()
 
-    if len(contents) > settings.MAX_UPLOAD_SIZE:
+    allowed_extensions = (
+        ".m4a",
+        ".wav",
+        ".mp3"
+    )
+
+    if not filename.endswith(
+        allowed_extensions
+    ):
         raise ValidationException(
-            "File too large. "
-            "Max allowed size is 25MB."
+            "Only .m4a, .wav, "
+            ".mp3 files allowed"
         )
 
-    await file.seek(0)
+    # Validate file size
+    file.file.seek(
+        0,
+        2
+    )
+    file_size = (
+        file.file.tell()
+    )
+    file.file.seek(0)
+
+    if (
+        file_size
+        > settings.MAX_UPLOAD_SIZE
+    ):
+        raise ValidationException(
+            "File size exceeds "
+            "allowed limit"
+        )
 
     return True
