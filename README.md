@@ -1,14 +1,14 @@
 # AI Meeting Copilot – Backend
 
-AI Meeting Copilot Backend is a production-oriented AI-powered meeting intelligence API built with FastAPI. It processes uploaded meeting audio, generates transcripts, summarizes discussions, extracts action items and key decisions, stores meeting history, and enables AI-driven Q&A over meeting content.
+AI Meeting Copilot Backend is a production-oriented AI-powered meeting intelligence API built with FastAPI, Generative AI, and Retrieval-Augmented Generation (RAG). The platform processes uploaded meeting audio, generates transcripts, summarizes discussions, extracts action items and key decisions, stores meeting history, and enables contextual AI-powered Q&A over meeting conversations using semantic retrieval workflows.
 
-The backend is designed with cloud deployment, scalable API architecture, modular services, and production-style engineering practices.
+The backend is designed with modular API architecture, AI orchestration workflows, vector embeddings, cloud deployment support, and production-style engineering practices.
 
 ---
 
 # Project Overview
 
-The backend acts as the intelligence engine for the AI Meeting Copilot platform.
+The backend acts as the AI intelligence and Retrieval-Augmented Generation (RAG) engine for the AI Meeting Copilot platform.
 
 It handles:
 
@@ -20,6 +20,7 @@ It handles:
 * Key decision extraction
 * Meeting persistence
 * AI chat over meeting context
+* Semantic retrieval workflows
 * Meeting history retrieval
 * Health monitoring
 * Cloud deployment support
@@ -49,12 +50,12 @@ Supported formats:
 
 ## 2. Speech-to-Text Transcription
 
-Meeting audio is transcribed using AI speech recognition.
+Meeting audio is transcribed using AI speech recognition powered by Whisper.
 
 Purpose:
 
 * Convert spoken discussions into text
-* Enable downstream NLP processing
+* Enable downstream NLP and Generative AI processing
 
 Output:
 
@@ -64,7 +65,7 @@ Output:
 
 ## 3. AI Meeting Summarization
 
-The backend generates structured meeting intelligence.
+The backend generates structured meeting intelligence using Generative AI workflows.
 
 Extracts:
 
@@ -72,13 +73,20 @@ Extracts:
 * Action items
 * Key decisions
 
-This converts raw conversations into usable business insights.
+This converts raw conversations into actionable business insights.
 
 ---
 
-## 4. AI Chat Over Meeting Context
+## 4. AI Chat Over Meeting Context (Generative AI + RAG)
 
-Users can ask contextual questions about uploaded meetings.
+Users can ask contextual questions about uploaded meetings using Generative AI and Retrieval-Augmented Generation (RAG) workflows.
+
+The backend:
+
+* Converts meeting transcripts into semantic embeddings
+* Stores embeddings in Pinecone vector database
+* Retrieves relevant meeting context using semantic similarity search
+* Sends contextual prompts to the LLM for grounded AI responses
 
 Example questions:
 
@@ -87,7 +95,7 @@ Example questions:
 * What decisions were taken?
 * Were blockers identified?
 
-This creates a lightweight Retrieval-Augmented AI interaction experience.
+This creates a lightweight contextual AI assistant capable of semantic meeting retrieval and intelligent conversational interactions.
 
 ---
 
@@ -114,7 +122,7 @@ The application:
 * Returns controlled responses
 * Continues processing where possible
 
-This improves backend resiliency.
+This improves backend reliability and fault tolerance.
 
 ---
 
@@ -146,15 +154,20 @@ Supports:
 * PostgreSQL
 * SQLAlchemy ORM
 
-## AI / NLP
+## AI / Generative AI / NLP
 
-* Whisper transcription
+* Whisper speech-to-text transcription
 * LLM-based summarization
+* Retrieval-Augmented Generation (RAG)
+* Semantic embeddings
 * Context-aware AI chat
+* Prompt orchestration workflows
 
-## Vector Storage
+## Vector Database & Semantic Retrieval
 
-* Pinecone
+* Pinecone vector database
+* Semantic similarity search
+* Contextual retrieval workflows
 
 ## Cloud & Storage
 
@@ -169,29 +182,33 @@ Supports:
 
 # Architecture Flow
 
-```text
 Client / iOS App
-      ↓
+↓
 Audio Upload API
-      ↓
+↓
 Validation Layer
-      ↓
+↓
 Azure Blob Storage Upload
-      ↓
+↓
 Speech-to-Text (Whisper)
-      ↓
+↓
 Summarization Pipeline
-      ↓
+↓
 Action Item Extraction
-      ↓
+↓
 Decision Extraction
-      ↓
-Pinecone Embedding Storage
-      ↓
+↓
+Semantic Embedding Generation
+↓
+Pinecone Vector Storage
+↓
+Retrieval-Augmented Generation (RAG)
+↓
 PostgreSQL Persistence
-      ↓
+↓
 Chat / Retrieval APIs
-```
+↓
+Contextual AI Responses
 
 ---
 
@@ -199,9 +216,7 @@ Chat / Retrieval APIs
 
 ## Health Check
 
-```http
-GET /health
-```
+GET `/health`
 
 Checks backend health.
 
@@ -209,9 +224,7 @@ Checks backend health.
 
 ## API Documentation
 
-```http
-GET /docs
-```
+GET `/docs`
 
 Swagger UI for API testing.
 
@@ -219,9 +232,7 @@ Swagger UI for API testing.
 
 ## Upload Meeting Audio
 
-```http
-POST /upload
-```
+POST `/upload`
 
 Processes uploaded audio and stores meeting intelligence.
 
@@ -237,16 +248,14 @@ Returns:
 
 ## Chat With Meeting
 
-```http
-POST /chat
-```
+POST `/chat`
 
-Allows AI-based Q&A using meeting context.
+Allows AI-based Q&A using contextual meeting retrieval.
 
 Input:
 
-* `meeting_id`
-* `question`
+* meeting_id
+* question
 
 Output:
 
@@ -256,9 +265,7 @@ Output:
 
 ## Fetch All Meetings
 
-```http
-GET /meetings
-```
+GET `/meetings`
 
 Returns all stored meetings.
 
@@ -266,9 +273,7 @@ Returns all stored meetings.
 
 ## Fetch Single Meeting
 
-```http
-GET /meetings/{meeting_id}
-```
+GET `/meetings/{meeting_id}`
 
 Returns detailed meeting data.
 
@@ -276,9 +281,7 @@ Returns detailed meeting data.
 
 ## Chat History
 
-```http
-GET /chat-history/{meeting_id}
-```
+GET `/chat-history/{meeting_id}`
 
 Returns historical chat interactions.
 
@@ -286,7 +289,6 @@ Returns historical chat interactions.
 
 # Project Structure
 
-```text
 backend/
 │
 ├── app/
@@ -312,7 +314,6 @@ backend/
 ├── Dockerfile
 ├── requirements.txt
 └── Dockerrun.aws.json
-```
 
 ---
 
@@ -320,14 +321,12 @@ backend/
 
 Example configuration:
 
-```env
 DATABASE_URL=
 AZURE_STORAGE_CONNECTION_STRING=
 AZURE_CONTAINER_NAME=
 OPENAI_API_KEY=
 PINECONE_API_KEY=
 PINECONE_INDEX_NAME=
-```
 
 ---
 
@@ -339,8 +338,6 @@ PINECONE_INDEX_NAME=
 git clone https://github.com/goutamroy/ai-meeting-copilot.git
 ```
 
----
-
 ## Create Virtual Environment
 
 ```bash
@@ -348,15 +345,11 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
 ## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
-
----
 
 ## Run Server
 
@@ -364,11 +357,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
----
-
 ## Local Swagger
 
-```text
+```bash
 http://127.0.0.1:8000/docs
 ```
 
@@ -381,8 +372,6 @@ http://127.0.0.1:8000/docs
 ```bash
 docker build -t ai-meeting-backend .
 ```
-
----
 
 ## Run Docker Container
 
@@ -405,11 +394,11 @@ Deployed using:
 
 # Live Backend Deployment
 
-Production Backend:
+## Production Backend
 
 http://ai-meeting-copilot-env.eba-4m9cjwwy.eu-north-1.elasticbeanstalk.com
 
-Swagger API Docs:
+## Swagger API Docs
 
 http://ai-meeting-copilot-env.eba-4m9cjwwy.eu-north-1.elasticbeanstalk.com/docs
 
@@ -428,11 +417,22 @@ Implemented:
 * Modular service-based architecture
 * Exception handling
 * DB fallback handling
-* Cloud-first design
 * API validation
 * Structured logging
 * Containerized deployment
 * Separation of concerns
+* Structured backend processing workflows
+
+---
+
+# AI Architecture Highlights
+
+* Generative AI-powered meeting intelligence workflows
+* Retrieval-Augmented Generation (RAG) implementation
+* Pinecone vector search integration
+* Semantic embedding-based contextual retrieval
+* Context-aware conversational AI interactions
+* Modular FastAPI AI orchestration pipeline
 
 ---
 
@@ -468,4 +468,16 @@ Planned improvements:
 
 Goutam Roy
 
-Senior iOS Engineer | AI/ML Enthusiast | Backend Integration | Cloud Deployment | FastAPI | SwiftUI | AWS | Azure
+Senior iOS Engineer | AI/ML Enthusiast | Backend Integration | FastAPI | SwiftUI | AWS | Azure
+
+---
+
+# About
+
+FastAPI-based AI Meeting Copilot backend integrating Generative AI, RAG workflows, Whisper transcription, Pinecone vector search, PostgreSQL, Docker, Azure Blob Storage, and AWS Elastic Beanstalk deployment.
+
+---
+
+# Topics
+
+python fastapi generative-ai rag llm pinecone vector-search semantic-search whisper postgresql docker aws azure backend ai
