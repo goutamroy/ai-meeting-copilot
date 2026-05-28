@@ -289,6 +289,7 @@ Returns historical chat interactions.
 
 # Project Structure
 
+```text
 backend/
 │
 ├── app/
@@ -314,6 +315,8 @@ backend/
 ├── Dockerfile
 ├── requirements.txt
 └── Dockerrun.aws.json
+```
+
 
 ---
 
