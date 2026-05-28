@@ -183,31 +183,31 @@ Supports:
 # Architecture Flow
 
 Client / iOS App
-↓
+      ↓
 Audio Upload API
-↓
+      ↓
 Validation Layer
-↓
+      ↓
 Azure Blob Storage Upload
-↓
+      ↓
 Speech-to-Text (Whisper)
-↓
+      ↓
 Summarization Pipeline
-↓
+      ↓
 Action Item Extraction
-↓
+      ↓
 Decision Extraction
-↓
+      ↓
 Semantic Embedding Generation
-↓
+      ↓
 Pinecone Vector Storage
-↓
+      ↓
 Retrieval-Augmented Generation (RAG)
-↓
+      ↓
 PostgreSQL Persistence
-↓
+      ↓
 Chat / Retrieval APIs
-↓
+      ↓
 Contextual AI Responses
 
 ---
