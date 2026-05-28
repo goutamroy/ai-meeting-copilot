@@ -76,6 +76,12 @@ app.add_middleware(
 # -----------------------------
 # App Lifecycle
 # -----------------------------
+@app.get("/")
+def root():
+    return {
+        "message": "AI Meeting Copilot Backend is running successfully"
+    }
+
 @app.on_event("startup")
 async def startup_event():
     """
