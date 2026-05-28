@@ -182,6 +182,7 @@ Supports:
 
 # Architecture Flow
 
+```text
 Client / iOS App
       ↓
 Audio Upload API
@@ -209,6 +210,7 @@ PostgreSQL Persistence
 Chat / Retrieval APIs
       ↓
 Contextual AI Responses
+```
 
 ---
 
